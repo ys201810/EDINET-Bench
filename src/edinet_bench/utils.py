@@ -6,6 +6,8 @@ import re
 import json
 import weave
 import openai
+import pandas as pd
+import numpy as np
 
 load_dotenv()
 
@@ -145,6 +147,66 @@ def extract_json_between_markers(llm_output: str | None) -> dict | None:
                 continue  # Try next match
 
     return None  # No valid JSON found
+
+
+def create_differential_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create differential features from time-series financial data.
+    
+    Args:
+        df: DataFrame with columns like 'metric_Prior4Year', 'metric_Prior3Year', etc.
+    
+    Returns:
+        DataFrame with additional differential features
+    """
+    df_diff = df.copy()
+    
+    # Find all unique metric names (excluding year suffix)
+    metric_names = set()
+    for col in df.columns:
+        if col != 'label':
+            # Extract metric name by removing year suffix
+            parts = col.split('_')
+            if len(parts) >= 2 and parts[-1] in ['Prior4Year', 'Prior3Year', 'Prior2Year', 'Prior1Year', 'CurrentYear']:
+                metric_name = '_'.join(parts[:-1])
+                metric_names.add(metric_name)
+    
+    # Create differential features for each metric
+    for metric in metric_names:
+        years = ['Prior4Year', 'Prior3Year', 'Prior2Year', 'Prior1Year', 'CurrentYear']
+        cols = [f"{metric}_{year}" for year in years]
+        
+        # Check if all required columns exist
+        existing_cols = [col for col in cols if col in df.columns]
+        if len(existing_cols) < 2:
+            continue
+            
+        # Sort columns by year (oldest to newest)
+        existing_cols = sorted(existing_cols, key=lambda x: years.index(x.split('_')[-1]))
+        
+        # Create year-over-year differences
+        for i in range(1, len(existing_cols)):
+            prev_col = existing_cols[i-1]
+            curr_col = existing_cols[i]
+            diff_col = f"{metric}_diff_{years[years.index(curr_col.split('_')[-1])]}_vs_{years[years.index(prev_col.split('_')[-1])]}"
+            
+            # Calculate difference (current - previous)
+            df_diff[diff_col] = df[curr_col] - df[prev_col]
+            
+        # Create growth rates (percentage change)
+        for i in range(1, len(existing_cols)):
+            prev_col = existing_cols[i-1]
+            curr_col = existing_cols[i]
+            growth_col = f"{metric}_growth_{years[years.index(curr_col.split('_')[-1])]}_vs_{years[years.index(prev_col.split('_')[-1])]}"
+            
+            # Calculate growth rate with division by zero protection
+            with np.errstate(divide='ignore', invalid='ignore'):
+                growth_rate = (df[curr_col] - df[prev_col]) / df[prev_col].abs()
+                # Replace inf and -inf with NaN
+                growth_rate = growth_rate.replace([np.inf, -np.inf], np.nan)
+                df_diff[growth_col] = growth_rate
+    
+    return df_diff
 
 
 def test_extract_json_between_markers():

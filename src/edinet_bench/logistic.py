@@ -17,11 +17,15 @@ from sklearn.metrics import (
 )
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
+try:
+    from .utils import create_differential_features
+except ImportError:
+    from utils import create_differential_features
 
 DATA_KEY = "summary"
 
 
-def prepare_dataset(task: str, split: str):
+def prepare_dataset(task: str, split: str, use_differential_features=False):
     ds = load_dataset("SakanaAI/EDINET-Bench", task, split=split)
     doc_ids = ds["doc_id"]
     print(ds[0][DATA_KEY])  # デバッグ表示（初期データの確認）
@@ -31,10 +35,10 @@ def prepare_dataset(task: str, split: str):
         for example in ds
     ]
 
-    return preprocess_data(data_list), doc_ids
+    return preprocess_data(data_list, use_differential_features), doc_ids
 
 
-def preprocess_data(data_list):
+def preprocess_data(data_list, use_differential_features=False):
     rows = []
     for data in data_list:
         row = {}
@@ -46,7 +50,13 @@ def preprocess_data(data_list):
                     col_name = f"{key}_{year}"
                     row[col_name] = float(val) if val not in ["－", None] else np.nan
         rows.append(row)
-    return pd.DataFrame(rows)
+    
+    df = pd.DataFrame(rows)
+    
+    if use_differential_features:
+        df = create_differential_features(df)
+    
+    return df
 
 
 def fill_and_align_data(X_train, X_test):
@@ -138,14 +148,19 @@ def parse_args():
         default="result",
         help="Directory to save the output files.",
     )
+    parser.add_argument(
+        "--use_differential_features",
+        action="store_true",
+        help="Enable differential features (differences and growth rates between years).",
+    )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     # データ読み込み・前処理
-    train, _ = prepare_dataset(args.task, split="train")
-    test, test_doc_ids = prepare_dataset(args.task, split="test")
+    train, _ = prepare_dataset(args.task, split="train", use_differential_features=args.use_differential_features)
+    test, test_doc_ids = prepare_dataset(args.task, split="test", use_differential_features=args.use_differential_features)
 
     X_train, y_train = train.drop(columns=["label"]), train["label"]
     X_test, y_test = test.drop(columns=["label"]), test["label"]

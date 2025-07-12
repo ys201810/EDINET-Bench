@@ -114,7 +114,12 @@ def get_response_from_gpt(
     return content, messages
 
 
-def extract_json_between_markers(llm_output: str) -> dict | None:
+def extract_json_between_markers(llm_output: str | None) -> dict | None:
+    # Handle None input
+    if llm_output is None:
+        print("No output from LLM")
+        return None
+
     # Regular expression pattern to find JSON content between ```json and ```
     json_pattern = r"```json(.*?)```"
     matches = re.findall(json_pattern, llm_output, re.DOTALL)

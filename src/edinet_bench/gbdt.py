@@ -18,15 +18,15 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 try:
-    from .utils import create_differential_features
+    from .utils import create_differential_features, create_percentage_change_features
 except ImportError:
-    from utils import create_differential_features
+    from utils import create_differential_features, create_percentage_change_features
 
 
 DATA_KEY = "summary"
 
 
-def prepare_dataset(task: str, split: str, use_differential_features=False):
+def prepare_dataset(task: str, split: str, use_differential_features=False, use_percentage_change_features=False):
     ds = load_dataset("SakanaAI/EDINET-Bench", task, split=split)
     doc_ids = ds["doc_id"]
     print(ds[0][DATA_KEY])  # デバッグ表示（初期データの確認）
@@ -36,10 +36,10 @@ def prepare_dataset(task: str, split: str, use_differential_features=False):
         for example in ds
     ]
 
-    return preprocess_data(data_list, use_differential_features), doc_ids
+    return preprocess_data(data_list, use_differential_features, use_percentage_change_features), doc_ids
 
 
-def preprocess_data(data_list, use_differential_features=False):
+def preprocess_data(data_list, use_differential_features=False, use_percentage_change_features=False):
     rows = []
     for data in data_list:
         row = {}
@@ -56,6 +56,9 @@ def preprocess_data(data_list, use_differential_features=False):
 
     if use_differential_features:
         df = create_differential_features(df)
+    
+    if use_percentage_change_features:
+        df = create_percentage_change_features(df)
 
     return df
 
@@ -179,6 +182,11 @@ def parse_args():
         action="store_true",
         help="Enable differential features (differences and growth rates between years).",
     )
+    parser.add_argument(
+        "--use_percentage_change_features",
+        action="store_true",
+        help="Enable percentage change features (growth rates between years).",
+    )
     return parser.parse_args()
 
 
@@ -189,11 +197,13 @@ def main():
         args.task,
         split="train",
         use_differential_features=args.use_differential_features,
+        use_percentage_change_features=args.use_percentage_change_features,
     )
     test, test_doc_ids = prepare_dataset(
         args.task,
         split="test",
         use_differential_features=args.use_differential_features,
+        use_percentage_change_features=args.use_percentage_change_features,
     )
 
     X_train, y_train = train.drop(columns=["label"]), train["label"]

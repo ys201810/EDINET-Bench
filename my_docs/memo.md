@@ -49,3 +49,94 @@ Accuracy: 0.583, Precision: 0.693, Recall: 0.646, F1: 0.669
 AUC: 0.579
 ```
 
+## 差分特徴量を作る。
+logistic回帰 + 差分特徴量
+python src/edinet_bench/logistic.py --task earnings_forecast --use_differential_features
+
+```
+Accuracy: 0.539, Precision: 0.672, Recall: 0.571, F1: 0.618
+[[ 75  82]
+ [126 168]]
+AUC: 0.551
+```
+
+random_forest + 差分特徴量
+python src/edinet_bench/random_forest.py --task earnings_forecast --use_differential_features --n_estimators 200 --max_depth 10
+
+```
+Accuracy: 0.579, Precision: 0.687, Recall: 0.650, F1: 0.668
+[[ 70  87]
+ [103 191]]
+AUC: 0.593
+```
+
+gbdt + 差分特徴量
+python src/edinet_bench/gbdt.py --task earnings_forecast --use_differential_features
+```
+Accuracy: 0.565, Precision: 0.708, Recall: 0.568, F1: 0.630
+[[ 88  69]
+ [127 167]]
+AUC: 0.561
+```
+
+xgboost + 差分特徴量
+python src/edinet_bench/xgboost_model.py --task earnings_forecast --use_differential_features --n_estimators 200 --max_depth 8
+```
+Accuracy: 0.585, Precision: 0.720, Recall: 0.595, F1: 0.652
+[[ 89  68]
+ [119 175]]
+AUC: 0.578
+```
+
+lightgbm + 差分特徴量
+python src/edinet_bench/lightgbm_model.py --task earnings_forecast --use_differential_features --num_leaves 50
+```
+Accuracy: 0.557, Precision: 0.691, Recall: 0.578, F1: 0.630
+[[ 81  76]
+ [124 170]]
+AUC: 0.585
+```
+
+## 割合特徴量を作る。
+logistic回帰 + 差分特徴量 + 割合特徴量
+Accuracy: 0.545, Precision: 0.677, Recall: 0.578, F1: 0.624
+[[ 76  81]
+ [124 170]]
+
+random_forest + 差分特徴量 + 割合特徴量
+python src/edinet_bench/random_forest.py --task earnings_forecast --use_differential_features  --use_percentage_change_features
+Accuracy: 0.563, Precision: 0.693, Recall: 0.592, F1: 0.639
+[[ 80  77]
+ [120 174]]
+AUC: 0.563
+
+gbdt + 差分特徴量 + 割合特徴量
+python src/edinet_bench/gbdt.py --task earnings_forecast --use_differential_features  --use_percentage_change_features
+Accuracy: 0.557, Precision: 0.703, Recall: 0.554, F1: 0.620
+[[ 88  69]
+ [131 163]]
+AUC: 0.564
+
+xgboost + 差分特徴量 + 割合特徴量
+
+lightgbm + 差分特徴量 + 割合特徴量
+
+
+
+### メモ
+python src/edinet_bench/random_forest.py --task earnings_forecast --use_differential_features --n_estimators 200 --max_depth 10
+が
+
+```
+try:
+    from .utils import create_differential_features
+except ImportError:
+    from utils import create_differential_features
+```
+
+を
+```
+from edinet_behcn.utils import create_differential_features
+```
+
+に変えると精度が落ちる。なぜか？

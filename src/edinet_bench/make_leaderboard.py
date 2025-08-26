@@ -25,6 +25,8 @@ MODEL_TABLE = {
     "o4-mini-2025-04-16": "o4-mini",
     "deepseek/deepseek-r1": "DeepSeek-R1",
     "deepseek/deepseek-chat": "DeepSeek-V3",
+    "vertex-ai/claude-3-7-sonnet-20250219": "Vertex-Sonnet-3.7",
+    "vertex-ai/claude-3-5-sonnet-20241022": "Vertex-Sonnet-3.5",
 }
 
 

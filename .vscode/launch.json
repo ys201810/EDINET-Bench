@@ -1,0 +1,141 @@
+{
+  // .vscode/launch.json
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug - earnings_forecast_llmgpt-4o",
+      "type": "debugpy",
+      "request": "launch",
+
+      // 実行したいスクリプト
+      "program": "${workspaceFolder}/src/edinet_bench/predict.py",
+
+      // ターミナルで渡していた引数をそのまま列挙
+      "args": [
+        "--task", "earnings_forecast",
+        "--model", "gpt-4o-2024-11-20",
+        "--sheets", "bs", "cf", "pl", "summary", "text"
+      ],
+
+      // ワークスペース直下をカレントディレクトリに
+      "cwd": "${workspaceFolder}",
+
+      // Poetry 仮想環境を自動検出 (特別な指定が要らない場合は削除可)
+      // "python": "${command:poetry.pythonPath}",
+
+      // ランタイムの標準出力をどこに表示するか
+      "console": "integratedTerminal",
+
+      // ライブラリ内部までブレークしたい場合は false
+      "justMyCode": true
+    },
+    {
+      "name": "Debug - earnings_forecast_logistic",
+      "type": "debugpy",
+      "request": "launch",
+
+      // 実行したいスクリプト
+      "program": "${workspaceFolder}/src/edinet_bench/logistic.py",
+
+      // ターミナルで渡していた引数をそのまま列挙
+      "args": [
+        "--task", "earnings_forecast",
+      ],
+
+      // ワークスペース直下をカレントディレクトリに
+      "cwd": "${workspaceFolder}",
+
+      // Poetry 仮想環境を自動検出 (特別な指定が要らない場合は削除可)
+      // "python": "${command:poetry.pythonPath}",
+
+      // ランタイムの標準出力をどこに表示するか
+      "console": "integratedTerminal",
+
+      // ライブラリ内部までブレークしたい場合は false
+      "justMyCode": true
+    },
+    {
+      "name": "Debug - earnings_forecast_logistic_custom",
+      "type": "debugpy",
+      "request": "launch",
+
+      // 実行したいスクリプト
+      "program": "${workspaceFolder}/src/edinet_bench/logistic.py",
+
+      // ターミナルで渡していた引数をそのまま列挙
+      "args": [
+        "--task", "earnings_forecast",
+        "--pred_custom", "1"
+      ],
+
+      // ワークスペース直下をカレントディレクトリに
+      "cwd": "${workspaceFolder}",
+
+      // Poetry 仮想環境を自動検出 (特別な指定が要らない場合は削除可)
+      // "python": "${command:poetry.pythonPath}",
+
+      // ランタイムの標準出力をどこに表示するか
+      "console": "integratedTerminal",
+
+      // ライブラリ内部までブレークしたい場合は false
+      "justMyCode": true
+    },    {
+      "name": "Debug - custom_dataset_creator",
+      "type": "debugpy",
+      "request": "launch",
+
+      // 実行したいスクリプト
+      "program": "${workspaceFolder}/src/edinet_bench/custom_dataset_creator.py",
+
+      // ターミナルで渡していた引数をそのまま列挙
+      "args": [
+        "--task", "earnings_forecast",
+        "--data_dir", "data/own/E05584",
+        "--file_pattern", "**/jpcrp030000-asr-001*.csv",
+        "--output_path", "data/own/E05584_out"
+      ],
+
+      // ワークスペース直下をカレントディレクトリに
+      "cwd": "${workspaceFolder}",
+
+      // Poetry 仮想環境を自動検出 (特別な指定が要らない場合は削除可)
+      // "python": "${command:poetry.pythonPath}",
+
+      // ランタイムの標準出力をどこに表示するか
+      "console": "integratedTerminal",
+
+      // ライブラリ内部までブレークしたい場合は false
+      "justMyCode": true
+    },
+    {
+      "name": "Debug - custom_dataset_predict",
+      "type": "debugpy",
+      "request": "launch",
+
+      // 実行したいスクリプト
+      "program": "${workspaceFolder}/src/edinet_bench/predict.py",
+
+      // ターミナルで渡していた引数をそのまま列挙
+      "args": [
+        "--task", "earnings_forecast",
+        "--model", "vertex-ai/claude-3-7-sonnet-20250219",
+        "--custom_data_path", "data/own",
+        "--custom_data_pattern", "**/*.csv",
+        "--sheets", "bs", "cf", "pl", "summary", "text",
+        "--wandb", "false"
+      ],
+
+      // ワークスペース直下をカレントディレクトリに
+      "cwd": "${workspaceFolder}",
+
+      // Poetry 仮想環境を自動検出 (特別な指定が要らない場合は削除可)
+      // "python": "${command:poetry.pythonPath}",
+
+      // ランタイムの標準出力をどこに表示するか
+      "console": "integratedTerminal",
+
+      // ライブラリ内部までブレークしたい場合は false
+      "justMyCode": true
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import yaml
 from edinet_bench.model import MODEL_TABLE, Model
 from dataclasses import dataclass, asdict
 from edinet_bench.utils import extract_json_between_markers
+from edinet_bench.custom_dataset_creator import CustomDatasetCreator
 
 
 @dataclass
@@ -124,6 +125,22 @@ def parse_args():
         default="You are a financial analyst.",
         help="System prompt for the model.",
     )
+    parser.add_argument(
+        "--custom_data_path",
+        type=str,
+        help="Path to custom EDINET data directory (if provided, will create custom dataset instead of using HuggingFace)",
+    )
+    parser.add_argument(
+        "--custom_data_pattern",
+        type=str,
+        default="**/*.csv",
+        help="File pattern for custom EDINET data files",
+    )
+    parser.add_argument(
+        "--max_custom_files",
+        type=int,
+        help="Maximum number of custom files to process",
+    )
 
     return parser.parse_args()
 
@@ -131,12 +148,48 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     if args.wandb:
-        weave.init(args.task)
-    ds = datasets.load_dataset(
-        "SakanaAI/EDINET-Bench",
-        args.task,
-        split="test",
-    )
+        try:
+            weave.init(args.task)
+        except Exception as e:
+            logger.warning(f"Failed to initialize Weave: {e}")
+            logger.info("Continuing without Weave tracking")
+
+    # Load dataset - either from HuggingFace or create custom dataset
+    if args.custom_data_path:
+        logger.info(f"Creating custom dataset from {args.custom_data_path}")
+        try:
+            import pickle
+
+            with open(
+                "/Users/yushi/work/project/tech_tf/sigfin/EDINET-Bench/data/local_ds_new.pkl",
+                "rb",
+            ) as inf:
+                ds = pickle.load(inf)
+
+            # creator = CustomDatasetCreator(args.custom_data_path)
+            # ds = creator.create_dataset(
+            #     task=args.task,
+            #     file_pattern=args.custom_data_pattern,
+            #     max_files=args.max_custom_files,
+            # )
+            logger.info(f"Created custom dataset with {len(ds)} examples")
+            # with open(
+            #    "/Users/yushi/work/project/tech_tf/sigfin/EDINET-Bench/data/local_ds_new.pkl",
+            #    "wb",
+            # ) as f:
+            #    pickle.dump(ds, f)
+
+        except Exception as e:
+            logger.error(f"Failed to create custom dataset: {e}")
+            exit()
+    else:
+        logger.info("Loading dataset from HuggingFace")
+        ds = datasets.load_dataset(
+            "SakanaAI/EDINET-Bench",
+            args.task,
+            split="test",
+        )
+
     if args.shuffle:
         ds = ds.shuffle(seed=args.seed)
     if args.num_example:
@@ -178,3 +231,5 @@ if __name__ == "__main__":
     ) as file:
         for result in result_list:
             file.write(json.dumps(result.to_dict(), ensure_ascii=False) + "\n")
+
+    logger.info(f"saved results to {save_dir}")

@@ -1,5 +1,6 @@
 import backoff
 import anthropic
+from anthropic import AnthropicVertex
 import openai
 from openai import OpenAI
 import os
@@ -123,6 +124,56 @@ class OpenRouterModel(Model):
         return response.choices[0].message.content
 
 
+class VertexAIModel(Model):
+    def __init__(
+        self,
+        model_name: str = "claude-3-7-sonnet-20250219",
+        system_prompt: str = "You are a helpful assistant.",
+        project_id: str = None,
+        location: str = "us-east5",
+    ):
+        self.model_name = model_name
+        self.system_prompt = system_prompt
+        self.project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
+        self.location = location
+
+        # Extract actual model name if it starts with vertex-ai/
+        if model_name.startswith("vertex-ai/"):
+            actual_model_name = model_name.replace("vertex-ai/", "")
+        else:
+            actual_model_name = model_name
+
+        # Convert model name to Vertex AI format (replace - with @ for version)
+        if actual_model_name.endswith("-20250219"):
+            vertex_model_name = actual_model_name.replace("-20250219", "@20250219")
+        elif actual_model_name.endswith("-20241022"):
+            vertex_model_name = actual_model_name.replace("-20241022", "@20241022")
+        else:
+            vertex_model_name = actual_model_name
+
+        self.vertex_model_name = vertex_model_name
+
+        # Initialize AnthropicVertex client
+        self.client = AnthropicVertex(region=self.location, project_id=self.project_id)
+
+    @backoff.on_exception(
+        backoff.expo,
+        (anthropic.RateLimitError, anthropic.APIError, anthropic.InternalServerError),
+        max_tries=5,
+    )
+    def get_completion(
+        self, prompt: str, gen_kwargs: GenerationConfig = GenerationConfig()
+    ) -> str:
+        response = self.client.messages.create(
+            model=self.vertex_model_name,
+            system=self.system_prompt,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=gen_kwargs.max_tokens,
+            temperature=gen_kwargs.temperature,
+        )
+        return response.content[0].text
+
+
 MODEL_TABLE: dict[str, Model] = {
     "claude-3-5-sonnet-20241022": AnthropicModel,
     "claude-3-7-sonnet-20250219": AnthropicModel,
@@ -131,6 +182,8 @@ MODEL_TABLE: dict[str, Model] = {
     "o4-mini-2025-04-16": OpenAIModel,
     "deepseek/deepseek-r1": OpenRouterModel,
     "deepseek/deepseek-chat": OpenRouterModel,
+    "vertex-ai/claude-3-7-sonnet-20250219": VertexAIModel,
+    "vertex-ai/claude-3-5-sonnet-20241022": VertexAIModel,
 }
 
 

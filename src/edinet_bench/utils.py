@@ -6,6 +6,8 @@ import re
 import json
 import weave
 import openai
+import pandas as pd
+import numpy as np
 
 load_dotenv()
 
@@ -114,7 +116,12 @@ def get_response_from_gpt(
     return content, messages
 
 
-def extract_json_between_markers(llm_output: str) -> dict | None:
+def extract_json_between_markers(llm_output: str | None) -> dict | None:
+    # Handle None input
+    if llm_output is None:
+        print("No output from LLM")
+        return None
+
     # Regular expression pattern to find JSON content between ```json and ```
     json_pattern = r"```json(.*?)```"
     matches = re.findall(json_pattern, llm_output, re.DOTALL)
@@ -140,6 +147,131 @@ def extract_json_between_markers(llm_output: str) -> dict | None:
                 continue  # Try next match
 
     return None  # No valid JSON found
+
+
+def create_differential_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create differential features from time-series financial data.
+    
+    Args:
+        df: DataFrame with columns like 'metric_Prior4Year', 'metric_Prior3Year', etc.
+    
+    Returns:
+        DataFrame with additional differential features
+    """
+    df_diff = df.copy()
+    
+    # Find all unique metric names (excluding year suffix)
+    metric_names = set()
+    for col in df.columns:
+        if col != 'label':
+            # Extract metric name by removing year suffix
+            parts = col.split('_')
+            if len(parts) >= 2 and parts[-1] in ['Prior4Year', 'Prior3Year', 'Prior2Year', 'Prior1Year', 'CurrentYear']:
+                metric_name = '_'.join(parts[:-1])
+                metric_names.add(metric_name)
+    
+    # Collect all new features in dictionaries to avoid DataFrame fragmentation
+    diff_features = {}
+    growth_features = {}
+    
+    # Create differential features for each metric
+    for metric in metric_names:
+        years = ['Prior4Year', 'Prior3Year', 'Prior2Year', 'Prior1Year', 'CurrentYear']
+        cols = [f"{metric}_{year}" for year in years]
+        
+        # Check if all required columns exist
+        existing_cols = [col for col in cols if col in df.columns]
+        if len(existing_cols) < 2:
+            continue
+            
+        # Sort columns by year (oldest to newest)
+        existing_cols = sorted(existing_cols, key=lambda x: years.index(x.split('_')[-1]))
+        
+        # Create year-over-year differences
+        for i in range(1, len(existing_cols)):
+            prev_col = existing_cols[i-1]
+            curr_col = existing_cols[i]
+            diff_col = f"{metric}_diff_{years[years.index(curr_col.split('_')[-1])]}_vs_{years[years.index(prev_col.split('_')[-1])]}"
+            
+            # Calculate difference (current - previous)
+            diff_features[diff_col] = df[curr_col] - df[prev_col]
+            
+        # Create growth rates (percentage change)
+        for i in range(1, len(existing_cols)):
+            prev_col = existing_cols[i-1]
+            curr_col = existing_cols[i]
+            growth_col = f"{metric}_growth_{years[years.index(curr_col.split('_')[-1])]}_vs_{years[years.index(prev_col.split('_')[-1])]}"
+            
+            # Calculate growth rate with division by zero protection
+            with np.errstate(divide='ignore', invalid='ignore'):
+                growth_rate = (df[curr_col] - df[prev_col]) / df[prev_col].abs()
+                # Replace inf and -inf with NaN
+                growth_rate = growth_rate.replace([np.inf, -np.inf], np.nan)
+                growth_features[growth_col] = growth_rate
+    
+    # Combine all features at once using pd.concat to avoid DataFrame fragmentation
+    new_features = []
+    if diff_features:
+        new_features.append(pd.DataFrame(diff_features))
+    if growth_features:
+        new_features.append(pd.DataFrame(growth_features))
+    
+    if new_features:
+        df_diff = pd.concat([df_diff] + new_features, axis=1)
+    
+    return df_diff
+
+
+def create_percentage_change_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create percentage change features from time-series financial data.
+    
+    Args:
+        df: DataFrame with columns like 'metric_Prior4Year', 'metric_Prior3Year', etc.
+    
+    Returns:
+        DataFrame with additional percentage change features
+    """
+    df_pct = df.copy()
+    
+    # Find all unique metric names (excluding year suffix)
+    metric_names = set()
+    for col in df.columns:
+        if col != 'label':
+            # Extract metric name by removing year suffix
+            parts = col.split('_')
+            if len(parts) >= 2 and parts[-1] in ['Prior4Year', 'Prior3Year', 'Prior2Year', 'Prior1Year', 'CurrentYear']:
+                metric_name = '_'.join(parts[:-1])
+                metric_names.add(metric_name)
+    
+    # Create percentage change features for each metric
+    for metric in metric_names:
+        years = ['Prior4Year', 'Prior3Year', 'Prior2Year', 'Prior1Year', 'CurrentYear']
+        cols = [f"{metric}_{year}" for year in years]
+        
+        # Check if all required columns exist
+        existing_cols = [col for col in cols if col in df.columns]
+        if len(existing_cols) < 2:
+            continue
+            
+        # Sort columns by year (oldest to newest)
+        existing_cols = sorted(existing_cols, key=lambda x: years.index(x.split('_')[-1]))
+        
+        # Create percentage change (growth rates)
+        for i in range(1, len(existing_cols)):
+            prev_col = existing_cols[i-1]
+            curr_col = existing_cols[i]
+            pct_change_col = f"{metric}_pct_change_{years[years.index(curr_col.split('_')[-1])]}_vs_{years[years.index(prev_col.split('_')[-1])]}"
+            
+            # Calculate percentage change with division by zero protection
+            with np.errstate(divide='ignore', invalid='ignore'):
+                pct_change = (df[curr_col] - df[prev_col]) / df[prev_col].abs()
+                # Replace inf and -inf with NaN
+                pct_change = pct_change.replace([np.inf, -np.inf], np.nan)
+                df_pct[pct_change_col] = pct_change
+    
+    return df_pct
 
 
 def test_extract_json_between_markers():

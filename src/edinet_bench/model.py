@@ -18,11 +18,20 @@ class Model:
     def __init__(self, model_id: str, system_prompt: str):
         self.model_id = model_id
         self.system_prompt = system_prompt
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
 
     def get_completion(
         self, prompt: str, gen_kwargs: GenerationConfig = GenerationConfig()
     ) -> str:
         raise NotImplementedError("This method should be overridden by subclasses.")
+
+    def get_usage_stats(self) -> dict:
+        """Return usage statistics"""
+        return {
+            "input_tokens": self.total_input_tokens,
+            "output_tokens": self.total_output_tokens,
+        }
 
 
 class OpenAIModel(Model):
@@ -31,6 +40,7 @@ class OpenAIModel(Model):
         model_name: str = "gpt-4o-2024-05-13",
         system_prompt: str = "You are a helpful assistant.",
     ):
+        super().__init__(model_name, system_prompt)
         self.model_name = model_name
         self.client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         self.system_prompt = system_prompt
@@ -60,6 +70,10 @@ class OpenAIModel(Model):
                 temperature=gen_kwargs.temperature,
                 seed=0,
             )
+        # Track token usage
+        if hasattr(response, "usage"):
+            self.total_input_tokens += response.usage.prompt_tokens
+            self.total_output_tokens += response.usage.completion_tokens
         return response.choices[0].message.content
 
 
@@ -69,6 +83,7 @@ class AnthropicModel(Model):
         model_name: str = "claude-3-5-sonnet-20241022",
         system_prompt: str = "You are a helpful assistant.",
     ):
+        super().__init__(model_name, system_prompt)
         self.model_name = model_name
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         self.system_prompt = system_prompt
@@ -88,6 +103,10 @@ class AnthropicModel(Model):
             max_tokens=gen_kwargs.max_tokens,
             temperature=gen_kwargs.temperature,
         )
+        # Track token usage
+        if hasattr(response, "usage"):
+            self.total_input_tokens += response.usage.input_tokens
+            self.total_output_tokens += response.usage.output_tokens
         return response.content[0].text
 
 
@@ -97,6 +116,7 @@ class OpenRouterModel(Model):
         model_name: str = "deepseek/deepseek-r1",
         system_prompt: str = "You are a helpful assistant.",
     ):
+        super().__init__(model_name, system_prompt)
         self.model_name = model_name
         self.client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
@@ -121,6 +141,10 @@ class OpenRouterModel(Model):
             max_tokens=gen_kwargs.max_tokens,
             temperature=gen_kwargs.temperature,
         )
+        # Track token usage
+        if hasattr(response, "usage"):
+            self.total_input_tokens += response.usage.prompt_tokens
+            self.total_output_tokens += response.usage.completion_tokens
         return response.choices[0].message.content
 
 
@@ -132,6 +156,7 @@ class VertexAIModel(Model):
         project_id: str = None,
         location: str = "us-east5",
     ):
+        super().__init__(model_name, system_prompt)
         self.model_name = model_name
         self.system_prompt = system_prompt
         self.project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
@@ -171,6 +196,10 @@ class VertexAIModel(Model):
             max_tokens=gen_kwargs.max_tokens,
             temperature=gen_kwargs.temperature,
         )
+        # Track token usage
+        if hasattr(response, "usage"):
+            self.total_input_tokens += response.usage.input_tokens
+            self.total_output_tokens += response.usage.output_tokens
         return response.content[0].text
 
 

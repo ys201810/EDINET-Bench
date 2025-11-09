@@ -84,9 +84,6 @@ class CustomDatasetCreator:
                         )
                         break
                 except Exception as e:
-                    logger.debug(
-                        f"Failed to parse {file_path} with encoding {encoding}: {e}"
-                    )
                     continue
 
             # Clean up temporary file
@@ -144,7 +141,6 @@ class CustomDatasetCreator:
                         return temp_path
 
                 except Exception as e:
-                    logger.debug(f"Failed to convert CSV with encoding {encoding}: {e}")
                     continue
 
             # If we get here, conversion failed

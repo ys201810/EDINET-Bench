@@ -11,6 +11,7 @@ from edinet_bench.model import MODEL_TABLE, Model
 from dataclasses import dataclass, asdict
 from edinet_bench.utils import extract_json_between_markers
 from edinet_bench.custom_dataset_creator import CustomDatasetCreator
+import pickle
 
 
 @dataclass
@@ -158,26 +159,27 @@ if __name__ == "__main__":
     if args.custom_data_path:
         logger.info(f"Creating custom dataset from {args.custom_data_path}")
         try:
-            import pickle
-
-            with open(
-                "/Users/yushi/work/project/tech_tf/sigfin/EDINET-Bench/data/local_ds_new.pkl",
-                "rb",
-            ) as inf:
-                ds = pickle.load(inf)
-
-            # creator = CustomDatasetCreator(args.custom_data_path)
-            # ds = creator.create_dataset(
-            #     task=args.task,
-            #     file_pattern=args.custom_data_pattern,
-            #     max_files=args.max_custom_files,
-            # )
-            logger.info(f"Created custom dataset with {len(ds)} examples")
-            # with open(
-            #    "/Users/yushi/work/project/tech_tf/sigfin/EDINET-Bench/data/local_ds_new.pkl",
-            #    "wb",
-            # ) as f:
-            #    pickle.dump(ds, f)
+            use_pre_dataset = True
+            pre_dataset_file = "/Users/yushi/work/project/tech_tf/sigfin/EDINET-Bench/data/local_ds_2025.pkl"
+            if use_pre_dataset:
+                with open(
+                    pre_dataset_file,
+                    "rb",
+                ) as inf:
+                    ds = pickle.load(inf)
+            else:
+                creator = CustomDatasetCreator(args.custom_data_path)
+                ds = creator.create_dataset(
+                    task=args.task,
+                    file_pattern=args.custom_data_pattern,
+                    max_files=args.max_custom_files,
+                )
+                logger.info(f"Created custom dataset with {len(ds)} examples")
+                with open(
+                    pre_dataset_file,
+                    "wb",
+                ) as f:
+                    pickle.dump(ds, f)
 
         except Exception as e:
             logger.error(f"Failed to create custom dataset: {e}")
@@ -233,3 +235,61 @@ if __name__ == "__main__":
             file.write(json.dumps(result.to_dict(), ensure_ascii=False) + "\n")
 
     logger.info(f"saved results to {save_dir}")
+
+    # Display usage statistics and cost
+    usage_stats = model.get_usage_stats()
+    input_tokens = usage_stats["input_tokens"]
+    output_tokens = usage_stats["output_tokens"]
+    total_tokens = input_tokens + output_tokens
+
+    logger.info(f"\n{'='*60}")
+    logger.info(f"Usage Statistics for {args.model}")
+    logger.info(f"{'='*60}")
+    logger.info(f"Input tokens:  {input_tokens:,}")
+    logger.info(f"Output tokens: {output_tokens:,}")
+    logger.info(f"Total tokens:  {total_tokens:,}")
+
+    # Calculate cost based on model
+    if "vertex-ai" in args.model:
+        # Vertex AI pricing (as of 2025)
+        # Claude 3.7 Sonnet: $3.00/M input, $15.00/M output
+        input_cost = (input_tokens / 1_000_000) * 3.00
+        output_cost = (output_tokens / 1_000_000) * 15.00
+        total_cost = input_cost + output_cost
+
+        logger.info(f"\nVertex AI Claude 3.7 Sonnet Pricing:")
+        logger.info(f"  Input:  ${input_cost:.4f} (${3.00}/M tokens)")
+        logger.info(f"  Output: ${output_cost:.4f} (${15.00}/M tokens)")
+        logger.info(f"  Total:  ${total_cost:.4f}")
+    elif "claude" in args.model:
+        # Anthropic API pricing (as of 2025)
+        # Claude 3.7 Sonnet: $3.00/M input, $15.00/M output
+        # Claude 3.5 Sonnet: $3.00/M input, $15.00/M output
+        # Claude 3.5 Haiku: $0.80/M input, $4.00/M output
+        if "haiku" in args.model:
+            input_price = 0.80
+            output_price = 4.00
+        else:
+            input_price = 3.00
+            output_price = 15.00
+
+        input_cost = (input_tokens / 1_000_000) * input_price
+        output_cost = (output_tokens / 1_000_000) * output_price
+        total_cost = input_cost + output_cost
+
+        logger.info(f"\nAnthropic API Pricing:")
+        logger.info(f"  Input:  ${input_cost:.4f} (${input_price}/M tokens)")
+        logger.info(f"  Output: ${output_cost:.4f} (${output_price}/M tokens)")
+        logger.info(f"  Total:  ${total_cost:.4f}")
+    elif "gpt-4o" in args.model:
+        # GPT-4o pricing: $2.50/M input, $10.00/M output
+        input_cost = (input_tokens / 1_000_000) * 2.50
+        output_cost = (output_tokens / 1_000_000) * 10.00
+        total_cost = input_cost + output_cost
+
+        logger.info(f"\nOpenAI GPT-4o Pricing:")
+        logger.info(f"  Input:  ${input_cost:.4f} ($2.50/M tokens)")
+        logger.info(f"  Output: ${output_cost:.4f} ($10.00/M tokens)")
+        logger.info(f"  Total:  ${total_cost:.4f}")
+
+    logger.info(f"{'='*60}\n")
